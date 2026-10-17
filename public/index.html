@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="id" data-theme="auto">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#edefec">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#1a2026">
+<title>AnyKey AI</title>
+<meta name="description" content="Chat dengan Claude, Gemini, dan AI lain memakai API key kamu sendiri.">
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="preload" href="vendor/fonts/carlito-regular.woff" as="font" type="font/woff" crossorigin>
+<link rel="preload" href="vendor/fonts/adventor-bold.woff" as="font" type="font/woff" crossorigin>
+<link rel="stylesheet" href="app.css">
+<script src="theme-init.js"></script>
+</head>
+<body>
+<noscript><div class="fatal"><h2>Butuh JavaScript</h2><p>AnyKey AI tidak bisa jalan tanpa JavaScript. Aktifkan dulu di browser kamu.</p></div></noscript>
+
+<div class="app" id="app">
+  <aside class="rail" id="rail" aria-label="Riwayat chat">
+    <div class="rail-head">
+      <h1 class="brand"><span data-icon="key" data-size="24"></span>AnyKey AI</h1>
+      <button class="icon-btn" id="railClose" type="button" aria-label="Tutup riwayat" data-icon="close"></button>
+    </div>
+    <div style="padding: 4px 12px 8px">
+      <button class="btn primary" id="newChat" type="button" style="width:100%"><span data-icon="plus" data-size="18"></span>Chat baru</button>
+    </div>
+    <nav class="rail-list" id="chatList" aria-label="Daftar chat"></nav>
+    <div class="rail-foot">
+      <button class="text-btn" id="exportBtn" type="button"><span data-icon="download" data-size="18"></span>Ekspor chat ini</button>
+      <button class="text-btn" id="railSettings" type="button"><span data-icon="sliders" data-size="18"></span>Pengaturan</button>
+    </div>
+  </aside>
+  <div class="scrim" id="scrim" hidden></div>
+
+  <main class="main">
+    <header class="top">
+      <button class="icon-btn" id="railToggle" type="button" aria-label="Buka riwayat chat" data-icon="menu"></button>
+      <h1 class="brand"><span data-icon="key" data-size="24"></span>AnyKey AI</h1>
+      <button class="icon-btn" id="settingsBtn" type="button" aria-label="Pengaturan" data-icon="sliders"></button>
+      <div class="keyring-wrap">
+        <div class="keyring" id="keyring" role="group" aria-label="Pilih AI"></div>
+        <div class="menu" id="moreMenu" role="menu" hidden></div>
+      </div>
+    </header>
+
+    <section class="transcript" id="transcript" role="log" aria-live="off" aria-label="Percakapan" tabindex="-1">
+      <div class="thread" id="thread"></div>
+    </section>
+    <button class="jump" id="jump" type="button" hidden><span data-icon="down" data-size="18"></span>Ke bawah</button>
+
+    <footer class="composer-wrap" id="composerWrap">
+      <form class="composer" id="composer" autocomplete="off">
+        <textarea id="input" rows="1" placeholder="Tulis pesan" aria-label="Pesan" enterkeyhint="send"></textarea>
+        <div class="composer-row">
+          <label class="select"><span class="sr-only">Model</span><select id="modelSelect"></select><span data-icon="chevron" data-size="16"></span></label>
+          <button class="send" id="sendBtn" type="submit" aria-label="Kirim pesan" disabled></button>
+        </div>
+      </form>
+      <p class="fine">Enter untuk kirim, Shift+Enter untuk baris baru. AI bisa salah, cek hal penting.</p>
+    </footer>
+  </main>
+</div>
+
+<dialog class="sheet" id="settings" aria-labelledby="settingsTitle">
+  <div class="sheet-head">
+    <h2 id="settingsTitle">Pengaturan</h2>
+    <button class="icon-btn" id="settingsClose" type="button" aria-label="Tutup pengaturan" data-icon="close"></button>
+  </div>
+  <div class="sheet-body">
+    <section class="sec">
+      <h3>AI dan API key</h3>
+      <label class="field">AI
+        <select class="f" id="setProvider"></select>
+      </label>
+      <div class="field" id="keyField">
+        <label for="setKey" id="keyLabel">API key</label>
+        <div class="row">
+          <input id="setKey" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Tempel API key di sini">
+          <button class="btn" id="showKey" type="button" aria-pressed="false">Lihat</button>
+        </div>
+        <span class="hint" id="keyHint"></span>
+        <a class="link" id="keyLink" target="_blank" rel="noopener noreferrer" hidden></a>
+      </div>
+      <label class="field" id="baseField">Base URL
+        <input id="setBase" type="url" inputmode="url" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="https://api.contoh.com/v1">
+        <span class="hint" id="baseHint">Alamat API yang kompatibel OpenAI. Biasanya berakhiran /v1.</span>
+      </label>
+      <div class="field">
+        <label for="setModel">Model</label>
+        <div class="row">
+          <input id="setModel" type="text" list="modelList" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Nama model">
+          <button class="btn" id="loadModels" type="button">Muat daftar</button>
+        </div>
+        <datalist id="modelList"></datalist>
+        <span class="hint" id="modelHint" role="status"></span>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h3>Perilaku jawaban</h3>
+      <label class="field">Instruksi sistem
+        <textarea class="f" id="setSystem" rows="3" placeholder="Contoh: Jawab singkat dalam Bahasa Indonesia."></textarea>
+      </label>
+      <div class="grid2">
+        <label class="field">Temperature
+          <input id="setTemp" type="number" inputmode="decimal" min="0" max="2" step="0.1" placeholder="Bawaan">
+        </label>
+        <label class="field">Maks. token jawaban
+          <input id="setMax" type="number" inputmode="numeric" min="1" step="1" placeholder="Bawaan">
+        </label>
+      </div>
+    </section>
+
+    <section class="sec" id="accessSec" hidden>
+      <h3>Password situs</h3>
+      <p class="privacy">Situs ini dikunci pemiliknya. Password tersimpan di browser ini selama kamu masih membuka tab.</p>
+      <button class="btn small" id="lockBtn" type="button" style="align-self:flex-start">Keluar</button>
+    </section>
+
+    <section class="sec">
+      <h3>Tampilan</h3>
+      <div class="seg" id="themeSeg" role="group" aria-label="Tema">
+        <button type="button" data-theme="auto">Otomatis</button>
+        <button type="button" data-theme="light">Terang</button>
+        <button type="button" data-theme="dark">Gelap</button>
+      </div>
+    </section>
+
+    <section class="sec">
+      <details class="owner">
+        <summary>Pemilik situs? Pakai key dari Vercel</summary>
+        <p class="privacy">Isi di Vercel → Settings → Environment Variables, lalu Redeploy: <code>ACCESS_PASSWORD</code> (kunci Claude Opus dan Gemini 3 Pro ke password kamu), <code>SYNOX_API_KEY</code> (dipakai Unlimited AI, Claude Opus, dan Gemini 3 Pro).</p>
+      </details>
+    </section>
+
+    <section class="sec">
+      <h3>Data</h3>
+      <label class="check"><input type="checkbox" id="setRemember"> Ingat API key di browser ini</label>
+      <p class="privacy">API key disimpan di browser ini saja dan dikirim lewat server situs ini ke penyedia AI saat kamu chat. Server tidak menyimpannya. Riwayat chat juga hanya ada di browser ini.</p>
+      <button class="btn danger small" id="wipeBtn" type="button" style="align-self:flex-start">Hapus semua data</button>
+    </section>
+  </div>
+  <div class="sheet-foot"><button class="btn primary" id="settingsDone" type="button">Selesai</button></div>
+</dialog>
+
+<dialog class="sheet gate" id="gate" aria-labelledby="gateTitle">
+  <form id="gateForm">
+    <h2 id="gateTitle">Khusus pemilik</h2>
+    <p>AI ini hanya untuk pemilik situs. Masukkan password untuk memakainya. Unlimited AI dan AI dengan key sendiri tetap bisa dipakai tanpa password.</p>
+    <input id="gatePw" type="password" autocomplete="current-password" placeholder="Password" aria-label="Password">
+    <span class="hint err-t" id="gateErr" hidden style="color:var(--danger)">Password salah. Coba lagi.</span>
+    <button class="btn primary" type="submit">Buka</button>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+<div class="sr-only" id="announce" role="status" aria-live="polite"></div>
+
+<script src="vendor/md.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
